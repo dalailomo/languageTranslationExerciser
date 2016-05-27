@@ -1,0 +1,126 @@
+#!/usr/bin/env php
+<?php
+
+if ( ! isset($argv[1]))
+    exit('Specify the source language'.PHP_EOL);
+
+if ( ! isset($argv[2]))
+    exit('Specify the language to practice'.PHP_EOL);
+
+$tries = ( ! isset($argv[3]) || ! is_numeric($argv[3]))
+    ? 10
+    : $argv[3];
+
+class Challenge
+{
+    private $words;
+    private $from;
+    private $to;
+    private $current;
+    private $totalChallengesMade = 0;
+    private $successCount = 0;
+    private $wrongCount = 0;
+
+    public function __construct(array $words)
+    {
+        $this->words = $words;
+    }
+
+    public function setFromToLanguage($from, $to)
+    {
+        $this->from = $from;
+        $this->to = $to;
+    }
+
+    public function generate()
+    {
+        $this->current = $this->words[rand(0, (count($this->words) - 1))];
+
+        $this->totalChallengesMade++;
+    }
+
+    public function getQuestion()
+    {
+        return $this->current[$this->from];
+    }
+
+    public function getAnswer()
+    {
+        return $this->current[$this->to];
+    }
+
+    public function getTotalChallengesMade()
+    {
+        return $this->totalChallengesMade;
+    }
+
+    public function increaseSuccessAnswerCount()
+    {
+        $this->successCount++;
+    }
+
+    public function increaseWrongAnswerCount()
+    {
+        $this->wrongCount++;
+    }
+
+    public function getSuccessCount()
+    {
+        return $this->successCount;
+    }
+
+    public function getWrongCount()
+    {
+        return $this->wrongCount;
+    }
+}
+
+$file = new \SplFileObject('words.csv');
+$file->setFlags(\SplFileObject::READ_CSV | \SplFileObject::READ_AHEAD | \SplFileObject::SKIP_EMPTY | \SplFileObject::DROP_NEW_LINE);
+
+$data = $fields = [];
+$i = 0;
+
+while( ! $file->eof()) {
+    $row = $file->fgetcsv();
+
+    if ( ! $row)
+        continue;
+
+    if (empty($fields)) {
+        $fields = $row;
+        continue;
+    }
+
+    foreach ($row as $k=>$value) {
+        $data[$i][$fields[$k]] = $value;
+    }
+
+    $i++;
+}
+
+$challenge = new Challenge($data);
+$challenge->setFromToLanguage($argv[1], $argv[2]);
+
+while ($challenge->getTotalChallengesMade() < $tries) {
+    $challenge->generate();
+
+    echo PHP_EOL . $challenge->getQuestion() . PHP_EOL;
+
+    $answer = readline(" > ");
+
+    if (strtolower($challenge->getAnswer()) === strtolower($answer)) {
+        echo "\033[32mCorrect!\033[37m";
+        $challenge->increaseSuccessAnswerCount();
+    } else {
+        echo "\033[31mWrong! The correct word is '{$challenge->getAnswer()}'\033[37m";
+        $challenge->increaseWrongAnswerCount();
+    }
+
+    echo PHP_EOL;
+}
+
+echo PHP_EOL . "Summary: "
+    . PHP_EOL . "  Successes: \e[32m{$challenge->getSuccessCount()}\e[37m"
+    . PHP_EOL . "  Failures:  \e[31m{$challenge->getWrongCount()}\e[37m"
+    . PHP_EOL . PHP_EOL;
